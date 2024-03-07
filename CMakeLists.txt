@@ -13,6 +13,6 @@ ENDIF()
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(bayan main.cpp)
+add_executable(bayan main.cpp FileCommander.hpp FileCommander.cpp FilesReader.cpp FilesReader.hpp HashGenerator.hpp HashGenerator.cpp)
 
 target_link_libraries(bayan ${Boost_LIBRARIES})
