@@ -13,7 +13,6 @@ public:
 
 	bool OpenFile (const std::string& theFileName);
 
-	void SetBlockSize (size_t theBlockSize);
 
 private:
 
