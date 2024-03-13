@@ -4,27 +4,17 @@
 
 using namespace std;
 
-FilesReader::FilesReader() : myBuffer{}, myFileName1(""), myFileName2("")
+FileReader::FileReader() 
 {
 }
 
-void FilesReader::SetBlockSize (size_t theBlockSize) 
+void FileReader::SetBlockSize (size_t theBlockSize) 
 {
 	//myBlockSize = theBlockSize;
 }
 
-void FilesReader::SetPair (const std::string& theFileName1, const std::string& theFileName2)
-{
-	myFileName1 = theFileName1;
-	myFileName2 = theFileName2;
-}
 
-std::vector<std::string> FilesReader::Blocks() const
-{
-	return myBlocks;
-}
-
-bool FilesReader::OpenFile (const std::string& theFileName)
+bool FileReader::OpenFile (const std::string& theFileName)
 {
 	myFile = std::ifstream (theFileName, std::ios::binary);
 	if (!myFile.is_open()) {
@@ -33,7 +23,7 @@ bool FilesReader::OpenFile (const std::string& theFileName)
 	return true;
 }
 
-bool FilesReader::ReadBlock (string& theBlock, size_t theBlockSize)
+bool FileReader::ReadBlock (string& theBlock, size_t theBlockSize)
 {
 	if (!myFile.eof()) {
 		char* aBuffer = new char [theBlockSize + 1] {};
@@ -52,25 +42,4 @@ bool FilesReader::ReadBlock (string& theBlock, size_t theBlockSize)
 	return false;
 }
 
-//bool FilesReader::Read (const std::string& theFileName)
-//{
-//	std::ifstream aFile(theFileName, std::ios::binary);
-//	if (!aFile.is_open()) {
-//		return false;
-//	}
-//
-//	while (!aFile.eof()) {
-//		aFile.read(myBuffer, myBlockSize);
-//		int aBytesRead = aFile.gcount(); // get bytes count red in fact 
-//		if (aBytesRead < myBlockSize) {
-//			for (int i = aBytesRead; i < myBlockSize; ++i) {
-//				myBuffer[i] = '\0';
-//			}
-//		}
-//		myBlocks.push_back (myBuffer);
-//	}
-//	aFile.close();
-//
-//	return true;
-//}
 

@@ -1,5 +1,7 @@
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/regex.h>
+
 #include <vector>
 #include <iostream>
 #include <map>
@@ -14,39 +16,59 @@ namespace fs = boost::filesystem;
 
 using namespace std;
 
-vector<set<string>> MakeSplit (const vector<string>& theFiles)
+namespace {
+
+bool IsDifferentFiles (const string& theFile1, const string& theFile2, size_t theBlockSize, const IHashGenerator& theGenerator)
 {
-    size_t aBlockSize = 5; // bad code 
+    bool aRes = false;
+    FileReader aR1, aR2;
+
+    aR1.OpenFile (theFile1);
+    aR2.OpenFile (theFile2);
+    
+    string aB1;
+    string aB2;
+
+    while (aR1.ReadBlock (aB1, theBlockSize) && aR2.ReadBlock (aB2, theBlockSize)) {
+        const auto aHash1 = theGenerator.GenerateHash (aB1);
+        const auto aHash2 = theGenerator.GenerateHash (aB2);
+        if (aHash1 != aHash2) {
+            aRes = true;
+            break;
+        }
+    }
+    return aRes;
+}
+
+vector<set<string>> ReadAndSplit (const vector<string>& theFiles, const size_t theBlockSize, const IHashGenerator& theGenerator)
+{
     vector<set<string>> aRes;
 
     for (size_t i = 0; i < theFiles.size(); ++i) {
-        FilesReader aReaderI, aReaderJ;
         set<string> aSet;
-        aSet.insert(theFiles[i]);
+        aSet.insert (theFiles[i]);
         for (size_t j = i + 1; j < theFiles.size(); ++j) {
-            aReaderI.OpenFile (theFiles[i]);
-            aReaderJ.OpenFile (theFiles[j]);
-            string theBuffI;
-            string theBuffJ;
-            bool IsDifferentFiles = false;
-            while (aReaderI.ReadBlock (theBuffI, aBlockSize) && aReaderJ.ReadBlock (theBuffJ, aBlockSize)) {
-                const auto aHashI = HashGenerator::Calculate (theBuffI);
-                const auto aHashJ = HashGenerator::Calculate (theBuffJ);
-                if (aHashI != aHashJ) {
-                    IsDifferentFiles = true;
-                    break;
-                }
-            }
-            if (IsDifferentFiles) {
+            if (IsDifferentFiles (theFiles[i], theFiles[j], theBlockSize, theGenerator)) {
                 break;
             }
             aSet.insert (theFiles[j]); // same files
         }
-        aRes.push_back(aSet);
+        aRes.push_back (aSet);
         i = i + aSet.size() - 1;
     }
-
     return aRes;
+}
+
+}
+
+void PrintFiles (const vector<set<string>>& theFiles)
+{
+    for (const auto& aSetOfSameFiles : theFiles) {
+        for (const auto& aFile : aSetOfSameFiles) {
+            cout << aFile << endl;
+        }
+        cout << endl;
+    }
 }
 
 int main(int argc, const char* argv[]) 
@@ -61,14 +83,14 @@ int main(int argc, const char* argv[])
             ("level", po::value<bool>(), "scan level : 0 - only specified directory, 1 - include nested directories")
             ("file_size", po::value<size_t>()->default_value (1), "minimal file size in bytes")
             ("block_size", po::value<size_t>()->default_value (1), "block size used to read files")
-            ("hash", po::value<string>(), "hash alghoritm (crc32, md5)");
+            ("mask", po::value<string>()->default_value(".+"), "regular expresion to search files")
+            ("hash", po::value<string>()->default_value("md5"), "hash alghoritm (crc32, md5)");
 
         po::variables_map aVariableMap;
         po::store (parse_command_line (argc, argv, aDesc), aVariableMap);
 
         FileCommander aCommander;
-        FilesReader aReader;
-
+        IHashGenerator* aHashGenerator;
         size_t aBlockSize;
 
         if (aVariableMap.count ("help")) {
@@ -93,14 +115,22 @@ int main(int argc, const char* argv[])
         if (aVariableMap.count ("block_size")) {
             aBlockSize = aVariableMap["block_size"].as<size_t>();
         }
+        if (aVariableMap.count("mask")) {
+            const auto aMask = aVariableMap["mask"].as<string>();
+            aCommander.SetMask (aMask);
+        }
         if (aVariableMap.count ("hash")) {
-            const auto aHash = aVariableMap["hash"].as<string>();
-            aCommander.SetHash (aHash);
+            if (aVariableMap["hash"].as<string>() == "md5") {
+                aHashGenerator = new MD5Service();
+            }
+            else if (aVariableMap["hash"].as<string>() == "crc32") {
+                aHashGenerator = new CRC32Service();
+            }
         }
 
         auto aFilesMap = aCommander.FindSameSizeFiles();
 
-        for (auto it = aFilesMap.begin(); it != aFilesMap.end(); ++it) {
+        for (auto& it = aFilesMap.begin(); it != aFilesMap.end(); ++it) {
             size_t aSize = it->first;
             vector<string> aFiles;
 
@@ -109,14 +139,8 @@ int main(int argc, const char* argv[])
                 ++it;
             }
 
-            auto aSplitedFiles = MakeSplit (aFiles);
-
-            for (const auto& aSetOfSameFiles : aSplitedFiles) {
-                for (const auto& aFile : aSetOfSameFiles) {
-                    cout << aFile << endl;
-                }
-                cout << endl;
-            }
+            auto aSplitedFiles = ReadAndSplit (aFiles, aBlockSize, *aHashGenerator);
+            PrintFiles (aSplitedFiles);
 
             if (it == aFilesMap.end()) {
                 break;
