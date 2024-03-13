@@ -50,7 +50,8 @@ void FileCommander::TraverseDirectory (const fs::path& theDir, std::multimap <si
 				continue;
 			}
 		}
-		if (!boost::regex_match(anEntry.path().string(), boost::smatch(), myMask)) {
+		boost::smatch aWhat;
+		if (!boost::regex_match(anEntry.path().string(), aWhat, myMask)) {
 			continue;
 		}
 		else if (fs::is_regular_file(anEntry.path())) {
