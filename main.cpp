@@ -130,7 +130,7 @@ int main(int argc, const char* argv[])
 
         auto aFilesMap = aCommander.FindSameSizeFiles();
 
-        for (auto& it = aFilesMap.begin(); it != aFilesMap.end(); ++it) {
+        for (auto it = aFilesMap.begin(); it != aFilesMap.end(); ++it) {
             size_t aSize = it->first;
             vector<string> aFiles;
 
